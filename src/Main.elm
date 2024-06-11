@@ -1,81 +1,31 @@
-module Main exposing (Model, Msg(..), init, main, update, view, viewInput, viewValidation)
+module Main exposing (Msg(..), main, update, view)
 
 import Browser
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
-
-
-
--- MAIN
+import Html exposing (Html, button, div, text)
+import Html.Events exposing (onClick)
 
 
 main =
-    Browser.sandbox { init = init, update = update, view = view }
-
-
-
--- MODEL
-
-
-type alias Model =
-    { name : String
-    , password : String
-    , passwordAgain : String
-    }
-
-
-init : Model
-init =
-    Model "" "" ""
-
-
-
--- UPDATE
+    Browser.sandbox { init = 0, update = update, view = view }
 
 
 type Msg
-    = Name String
-    | Password String
-    | PasswordAgain String
+    = Increment
+    | Decrement
 
 
-update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Name name ->
-            { model | name = name }
+        Increment ->
+            model + 1
 
-        Password password ->
-            { model | password = password }
-
-        PasswordAgain password ->
-            { model | passwordAgain = password }
+        Decrement ->
+            model - 1
 
 
-
--- VIEW
-
-
-view : Model -> Html Msg
 view model =
     div []
-        [ viewInput "text" "Name" model.name Name
-        , viewInput "password" "Password" model.password Password
-        , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
-        , viewValidation model
+        [ button [ onClick Decrement ] [ text "-" ]
+        , div [] [ text (String.fromInt model) ]
+        , button [ onClick Increment ] [ text "+" ]
         ]
-
-
-viewInput : String -> String -> String -> (String -> msg) -> Html msg
-viewInput t p v toMsg =
-    input [ type_ t, placeholder p, value v, onInput toMsg ] []
-
-
-viewValidation : Model -> Html msg
-viewValidation model =
-    if model.password == model.passwordAgain then
-        div [ style "color" "green" ] [ text "OK" ]
-
-    else
-        div [ style "color" "red" ] [ text "Passwords do not match!" ]
