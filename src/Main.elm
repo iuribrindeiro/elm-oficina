@@ -1,9 +1,9 @@
-module Main exposing (Model, Msg(..), init, main, update, view, viewInput, viewValidation)
+module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onClick, onInput)
 
 
 
@@ -18,16 +18,21 @@ main =
 -- MODEL
 
 
+type alias Todo =
+    { title : String
+    , completed : Bool
+    }
+
+
 type alias Model =
-    { name : String
-    , password : String
-    , passwordAgain : String
+    { newTodoTitle : String
+    , todos : List Todo
     }
 
 
 init : Model
 init =
-    Model "" "" ""
+    Model "" []
 
 
 
@@ -35,22 +40,31 @@ init =
 
 
 type Msg
-    = Name String
-    | Password String
-    | PasswordAgain String
+    = ChangeInputContent String
+    | AddTodo
+    | ToggleTodo Todo
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Name name ->
-            { model | name = name }
+        ChangeInputContent content ->
+            { model | newTodoTitle = content }
 
-        Password password ->
-            { model | password = password }
+        AddTodo ->
+            { todos = Todo model.newTodoTitle False :: model.todos, newTodoTitle = "" }
 
-        PasswordAgain password ->
-            { model | passwordAgain = password }
+        ToggleTodo todo ->
+            { model | todos = model.todos |> List.map (toggleTodo todo) }
+
+
+toggleTodo : Todo -> Todo -> Todo
+toggleTodo todo t =
+    if t == todo then
+        { t | completed = not t.completed }
+
+    else
+        t
 
 
 
@@ -59,23 +73,25 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ viewInput "text" "Name" model.name Name
-        , viewInput "password" "Password" model.password Password
-        , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
-        , viewValidation model
+    div [ style "display" "flex", style "flex-direction" "column", style "align-items" "center" ]
+        [ div [ style "display" "flex", style "flex-direction" "row", style "justify-content" "space-between" ]
+            [ input [ onInput ChangeInputContent, value model.newTodoTitle ] []
+            , button [ onClick AddTodo ] [ text "Adicionar" ]
+            ]
+        , ul [] (List.map viewTodo model.todos)
         ]
 
 
-viewInput : String -> String -> String -> (String -> msg) -> Html msg
-viewInput t p v toMsg =
-    input [ type_ t, placeholder p, value v, onInput toMsg ] []
+viewTodo todo =
+    li
+        [ onClick (ToggleTodo todo)
+        , style "text-decoration"
+            (if todo.completed then
+                "line-through"
 
-
-viewValidation : Model -> Html msg
-viewValidation model =
-    if model.password == model.passwordAgain then
-        div [ style "color" "green" ] [ text "OK" ]
-
-    else
-        div [ style "color" "red" ] [ text "Passwords do not match!" ]
+             else
+                "none"
+            )
+        , style "cursor" "pointer"
+        ]
+        [ text todo.title ]
