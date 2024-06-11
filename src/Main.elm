@@ -4,14 +4,17 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
+import Http
+import Json.Decode exposing (bool, field, map2, string)
 
 
 
 -- MAIN
 
 
+main : Program () Model Msg
 main =
-    Browser.sandbox { init = init, update = update, view = view }
+    Browser.element { init = init, update = update, view = view, subscriptions = \_ -> Sub.none }
 
 
 
@@ -30,9 +33,22 @@ type alias Model =
     }
 
 
-init : Model
-init =
-    Model "" []
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( Model "" []
+    , Http.get
+        { url = "https://jsonplaceholder.typicode.com/todos"
+        , expect = Http.expectJson GotTodos todoDecoder
+        }
+    )
+
+
+todoDecoder : Json.Decode.Decoder (List Todo)
+todoDecoder =
+    map2 Todo
+        (field "title" string)
+        (field "completed" bool)
+        |> Json.Decode.list
 
 
 
@@ -43,19 +59,26 @@ type Msg
     = ChangeInputContent String
     | AddTodo
     | ToggleTodo Todo
+    | GotTodos (Result Http.Error (List Todo))
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
         ChangeInputContent content ->
-            { model | newTodoTitle = content }
+            ( { model | newTodoTitle = content }, Cmd.none )
 
         AddTodo ->
-            { todos = Todo model.newTodoTitle False :: model.todos, newTodoTitle = "" }
+            ( { todos = model.todos ++ [ Todo model.newTodoTitle False ], newTodoTitle = "" }, Cmd.none )
 
         ToggleTodo todo ->
-            { model | todos = model.todos |> List.map (toggleTodo todo) }
+            ( { model | todos = model.todos |> List.map (toggleTodo todo) }, Cmd.none )
+
+        GotTodos (Ok todos) ->
+            ( { model | todos = todos |> List.take 10 }, Cmd.none )
+
+        GotTodos (Err _) ->
+            ( model, Cmd.none )
 
 
 toggleTodo : Todo -> Todo -> Todo
@@ -78,10 +101,11 @@ view model =
             [ input [ onInput ChangeInputContent, value model.newTodoTitle ] []
             , button [ onClick AddTodo ] [ text "Adicionar" ]
             ]
-        , ul [] (List.map viewTodo model.todos)
+        , ul [] (model.todos |> List.map viewTodo)
         ]
 
 
+viewTodo : Todo -> Html Msg
 viewTodo todo =
     li
         [ onClick (ToggleTodo todo)
